@@ -13,5 +13,7 @@ public interface OrderRepository {
 
     Optional<UUID> findLowestId();
 
-    List<Order> findOrders(UUID fromId, int limit);
+    List<Order> findOrders(UUID fromId, int pageSize);
+
+    List<UUID> findOrderIDs(UUID fromId, int pageSize);
 }

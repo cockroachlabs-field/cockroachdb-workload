@@ -19,9 +19,4 @@ public class UndefinedWorkload extends AbstractCommand implements Workload {
     public String prompt() {
         return "undefined:$ ";
     }
-
-    @Override
-    protected List<Resource> sqlFiles() {
-        return Collections.emptyList();
-    }
 }

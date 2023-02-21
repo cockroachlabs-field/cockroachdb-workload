@@ -34,15 +34,6 @@ public class LedgerWorkload extends AbstractLedgerWorkload implements Workload {
         return "ledger:$ ";
     }
 
-    @Override
-    protected List<Resource> sqlFiles() {
-        return Arrays.asList(
-                new ClassPathResource("db/ledger/create-ledger.sql"),
-                new ClassPathResource("db/ledger/drop-ledger.sql"),
-                new ClassPathResource("db/ledger/partition-setup.sql")
-        );
-    }
-
     @ShellMethod(value = "Initialize ledger workload")
     public void init(
             @ShellOption(help = "initial balance", defaultValue = "100000.00") String initialBalance,

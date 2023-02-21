@@ -138,19 +138,19 @@ public class Metrics extends AbstractCommand {
             throws SQLException {
         HikariDataSource ds = getDataSource().unwrap(HikariDataSource.class);
 
-        getConsole().successf("HikariCP data source");
-        getConsole().infof("\tjdbc url: %s", ds.getJdbcUrl());
-        getConsole().infof("\tjdbc user: %s", ds.getUsername());
-        getConsole().infof("\tmax pool size: %s", ds.getMaximumPoolSize());
-        getConsole().infof("\tmin idle size: %s", ds.getMinimumIdle());
-        getConsole().infof("\tidle timeout: %s", ds.getIdleTimeout());
-        getConsole().infof("\tmax lifetime: %s", ds.getMaxLifetime());
-        getConsole().infof("\tvalidation timeout: %s", ds.getValidationTimeout());
-        getConsole().infof("\tconnection init: %s", ds.getConnectionInitSql());
+        getConsole().successf(">> HikariCP data source");
+        getConsole().infof("jdbc url: %s", ds.getJdbcUrl());
+        getConsole().infof("jdbc user: %s", ds.getUsername());
+        getConsole().infof("max pool size: %s", ds.getMaximumPoolSize());
+        getConsole().infof("min idle size: %s", ds.getMinimumIdle());
+        getConsole().infof("idle timeout: %s", ds.getIdleTimeout());
+        getConsole().infof("max lifetime: %s", ds.getMaxLifetime());
+        getConsole().infof("validation timeout: %s", ds.getValidationTimeout());
+        getConsole().infof("connection init: %s", ds.getConnectionInitSql());
 
-        getConsole().successf("Database metadata:");
+        getConsole().successf(">> Database metadata:");
         try {
-            getConsole().infof("\tdatabaseVersion: %s",
+            getConsole().infof("databaseVersion: %s",
                     new JdbcTemplate(ds).queryForObject("select version()", String.class));
         } catch (DataAccessException e) {
         }
@@ -162,7 +162,7 @@ public class Metrics extends AbstractCommand {
                 Arrays.stream(ReflectionUtils.getDeclaredMethods(metaData.getClass())).sequential().forEach(method -> {
                     if (method.getParameterCount() == 0) {
                         try {
-                            getConsole().infof("\t%s: %s", method.getName(),
+                            getConsole().infof("%s: %s", method.getName(),
                                     ReflectionUtils.invokeMethod(method, metaData));
                         } catch (Exception e) {
                             getConsole().error(e.toString());
@@ -170,19 +170,19 @@ public class Metrics extends AbstractCommand {
                     }
                 });
             } else {
-                getConsole().infof("\tautoCommit: %s", connection.getAutoCommit());
-                getConsole().infof("\tdatabaseProductName: %s", metaData.getDatabaseProductName());
-                getConsole().infof("\tdatabaseMajorVersion: %s", metaData.getDatabaseMajorVersion());
-                getConsole().infof("\tdatabaseMinorVersion: %s", metaData.getDatabaseMinorVersion());
-                getConsole().infof("\tdatabaseProductVersion: %s", metaData.getDatabaseProductVersion());
-                getConsole().infof("\tdriverMajorVersion: %s", metaData.getDriverMajorVersion());
-                getConsole().infof("\tdriverMinorVersion: %s", metaData.getDriverMinorVersion());
-                getConsole().infof("\tdriverName: %s", metaData.getDriverName());
-                getConsole().infof("\tdriverVersion: %s", metaData.getDriverVersion());
-                getConsole().infof("\tmaxConnections: %s", metaData.getMaxConnections());
-                getConsole().infof("\tdefaultTransactionIsolation: %s", metaData.getDefaultTransactionIsolation());
-                getConsole().infof("\ttransactionIsolation: %s", connection.getTransactionIsolation());
-                getConsole().infof("\ttransactionIsolationName: %s",
+                getConsole().infof("autoCommit: %s", connection.getAutoCommit());
+                getConsole().infof("databaseProductName: %s", metaData.getDatabaseProductName());
+                getConsole().infof("databaseMajorVersion: %s", metaData.getDatabaseMajorVersion());
+                getConsole().infof("databaseMinorVersion: %s", metaData.getDatabaseMinorVersion());
+                getConsole().infof("databaseProductVersion: %s", metaData.getDatabaseProductVersion());
+                getConsole().infof("driverMajorVersion: %s", metaData.getDriverMajorVersion());
+                getConsole().infof("driverMinorVersion: %s", metaData.getDriverMinorVersion());
+                getConsole().infof("driverName: %s", metaData.getDriverName());
+                getConsole().infof("driverVersion: %s", metaData.getDriverVersion());
+                getConsole().infof("maxConnections: %s", metaData.getMaxConnections());
+                getConsole().infof("defaultTransactionIsolation: %s", metaData.getDefaultTransactionIsolation());
+                getConsole().infof("transactionIsolation: %s", connection.getTransactionIsolation());
+                getConsole().infof("transactionIsolationName: %s",
                         ConnectionProviderInitiator.toIsolationNiceName(connection.getTransactionIsolation()));
             }
         } catch (SQLException ex) {

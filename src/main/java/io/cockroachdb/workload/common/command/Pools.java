@@ -98,33 +98,33 @@ public class Pools extends AbstractCommand {
 
         Runnable r = () -> {
             ThreadPoolStats threadPoolStats = ThreadPoolStats.from(getExecutorTemplate().getThreadPoolExecutor());
-            getConsole().successf("Thread Pool Status:");
-            getConsole().infof("\tpoolSize: %s", threadPoolStats.poolSize);
-            getConsole().infof("\tmaximumPoolSize: %s", threadPoolStats.maximumPoolSize);
-            getConsole().infof("\tcorePoolSize: %s", threadPoolStats.corePoolSize);
-            getConsole().infof("\tactiveCount: %s", threadPoolStats.activeCount);
-            getConsole().infof("\tcompletedTaskCount: %s", threadPoolStats.completedTaskCount);
-            getConsole().infof("\ttaskCount: %s", threadPoolStats.taskCount);
-            getConsole().infof("\tlargestPoolSize: %s", threadPoolStats.largestPoolSize);
+            getConsole().successf(">> Thread Pool Status:");
+            getConsole().infof("poolSize: %s", threadPoolStats.poolSize);
+            getConsole().infof("maximumPoolSize: %s", threadPoolStats.maximumPoolSize);
+            getConsole().infof("corePoolSize: %s", threadPoolStats.corePoolSize);
+            getConsole().infof("activeCount: %s", threadPoolStats.activeCount);
+            getConsole().infof("completedTaskCount: %s", threadPoolStats.completedTaskCount);
+            getConsole().infof("taskCount: %s", threadPoolStats.taskCount);
+            getConsole().infof("largestPoolSize: %s", threadPoolStats.largestPoolSize);
 
             HikariPoolMXBean hikariPoolMXBean = ds.getHikariPoolMXBean();
-            getConsole().successf("Connection Pool Status:");
-            getConsole().infof("\tactiveConnections: %s", hikariPoolMXBean.getActiveConnections());
-            getConsole().infof("\tidleConnections: %s", hikariPoolMXBean.getIdleConnections());
-            getConsole().infof("\ttotalConnections: %s", hikariPoolMXBean.getTotalConnections());
-            getConsole().infof("\tthreadsAwaitingConnection: %s", hikariPoolMXBean.getThreadsAwaitingConnection());
+            getConsole().successf(">> Connection Pool Status:");
+            getConsole().infof("activeConnections: %s", hikariPoolMXBean.getActiveConnections());
+            getConsole().infof("idleConnections: %s", hikariPoolMXBean.getIdleConnections());
+            getConsole().infof("totalConnections: %s", hikariPoolMXBean.getTotalConnections());
+            getConsole().infof("threadsAwaitingConnection: %s", hikariPoolMXBean.getThreadsAwaitingConnection());
 
             HikariConfigMXBean hikariConfigMXBean = ds.getHikariConfigMXBean();
-            getConsole().successf("Connection Pool Configuration:");
-            getConsole().infof("\tmaximumPoolSize: %s", hikariConfigMXBean.getMaximumPoolSize());
-            getConsole().infof("\tminimumIdle: %s", hikariConfigMXBean.getMinimumIdle());
-            getConsole().infof("\tconnectionTimeout: %,d", hikariConfigMXBean.getConnectionTimeout());
-            getConsole().infof("\tvalidationTimeout: %,d", hikariConfigMXBean.getValidationTimeout());
-            getConsole().infof("\tidleTimeout: %,d", hikariConfigMXBean.getIdleTimeout());
-            getConsole().infof("\tmaxLifetime: %,d", hikariConfigMXBean.getMaxLifetime());
-            getConsole().infof("\tpoolName: %s", hikariConfigMXBean.getPoolName());
-            getConsole().infof("\tleakDetectionThreshold: %s", hikariConfigMXBean.getLeakDetectionThreshold());
-            getConsole().infof("\tcatalog: %s", hikariConfigMXBean.getCatalog());
+            getConsole().successf(">> Connection Pool Configuration:");
+            getConsole().infof("maximumPoolSize: %s", hikariConfigMXBean.getMaximumPoolSize());
+            getConsole().infof("minimumIdle: %s", hikariConfigMXBean.getMinimumIdle());
+            getConsole().infof("connectionTimeout: %,d", hikariConfigMXBean.getConnectionTimeout());
+            getConsole().infof("validationTimeout: %,d", hikariConfigMXBean.getValidationTimeout());
+            getConsole().infof("idleTimeout: %,d", hikariConfigMXBean.getIdleTimeout());
+            getConsole().infof("maxLifetime: %,d", hikariConfigMXBean.getMaxLifetime());
+            getConsole().infof("poolName: %s", hikariConfigMXBean.getPoolName());
+            getConsole().infof("leakDetectionThreshold: %s", hikariConfigMXBean.getLeakDetectionThreshold());
+            getConsole().infof("catalog: %s", hikariConfigMXBean.getCatalog());
 
             if (threadPoolStats.corePoolSize < hikariConfigMXBean.getMaximumPoolSize()) {
                 getConsole().warnf(
@@ -150,8 +150,9 @@ public class Pools extends AbstractCommand {
         Runnable r = () -> {
             try {
                 ThreadPoolStats threadPoolStats = aggregatedThreadPoolStats.peekLast();
+                getConsole().warn(">> Pool Stats");
                 if (threadPoolStats != null) {
-                    getConsole().successf("Thread Pool:");
+                    getConsole().successf(">> Thread Pool:");
                     printSummaryStats("poolSize",
                             threadPoolStats.poolSize,
                             aggregatedThreadPoolStats.stream().mapToInt(value -> value.poolSize));
@@ -177,7 +178,7 @@ public class Pools extends AbstractCommand {
 
                 ConnectionPoolStats poolStats = aggregatedConnectionPoolStats.peekLast();
                 if (poolStats != null) {
-                    getConsole().successf("Connection Pool Stats:");
+                    getConsole().successf(">> Connection Pool Stats:");
                     printSummaryStats("active",
                             poolStats.activeConnections,
                             aggregatedConnectionPoolStats.stream().mapToInt(value -> value.activeConnections));
@@ -198,10 +199,11 @@ public class Pools extends AbstractCommand {
 
         if (repeatTime > 0) {
             ScheduledFuture<?> f = scheduledExecutorService
-                    .scheduleAtFixedRate(r, 0, 2, TimeUnit.SECONDS);
+                    .scheduleAtFixedRate(r, 0, 5, TimeUnit.SECONDS);
             scheduledExecutorService
                     .schedule(() -> {
                         f.cancel(true);
+                        getConsole().successf("<< Pool Stats ended");
                     }, repeatTime, TimeUnit.SECONDS);
         } else {
             r.run();

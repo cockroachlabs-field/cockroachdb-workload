@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.LineNumberReader;
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.util.Collections;
 import java.util.List;
 
 import javax.sql.DataSource;
@@ -15,7 +14,6 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.EncodedResource;
 import org.springframework.shell.Availability;
 import org.springframework.shell.standard.AbstractShellComponent;
-import org.springframework.shell.standard.ShellMethod;
 
 import io.cockroachdb.workload.common.ExecutorTemplate;
 
@@ -77,9 +75,8 @@ public abstract class AbstractCommand extends AbstractShellComponent {
                 : Availability.available();
     }
 
-    @ShellMethod(value = "Print workload SQL files")
-    public void printSQL() {
-        this.sqlFiles().forEach(resource -> {
+    public void printSQLFiles(List<Resource> files) {
+        files.forEach(resource -> {
             System.out.println(">> " + resource);
 
             EncodedResource encodedScript = new EncodedResource(resource, "UTF-8");
@@ -94,10 +91,6 @@ public abstract class AbstractCommand extends AbstractShellComponent {
                 e.printStackTrace();
             }
         });
-    }
-
-    protected List<Resource> sqlFiles() {
-        return Collections.emptyList();
     }
 
     protected void onPostInit() {

@@ -58,10 +58,18 @@ public class JpaOrderRepository implements OrderRepository {
     }
 
     @Override
-    public List<Order> findOrders(UUID fromId, int limit) {
+    public List<Order> findOrders(UUID fromId, int pageSize) {
         return em.createQuery("select o from Order o where o.id > :fromId order by id", Order.class)
                 .setParameter("fromId", fromId)
-                .setMaxResults(limit)
+                .setMaxResults(pageSize)
+                .getResultList();
+    }
+
+    @Override
+    public List<UUID> findOrderIDs(UUID fromId, int pageSize) {
+        return em.createQuery("select o.id from Order o where o.id > :fromId order by id", UUID.class)
+                .setParameter("fromId", fromId)
+                .setMaxResults(pageSize)
                 .getResultList();
     }
 }

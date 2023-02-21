@@ -39,14 +39,6 @@ public class OutboxWorkload extends AbstractCommand implements Workload {
         return "outbox:$ ";
     }
 
-    @Override
-    protected List<Resource> sqlFiles() {
-        return Arrays.asList(
-                new ClassPathResource("db/outbox/create-outbox.sql"),
-                new ClassPathResource("db/outbox/drop-outbox.sql")
-        );
-    }
-
     @ShellMethod(value = "Initialize outbox workload")
     public void init(
             @ShellOption(help = "number of partitions (tables)", defaultValue = "1") int partitions,

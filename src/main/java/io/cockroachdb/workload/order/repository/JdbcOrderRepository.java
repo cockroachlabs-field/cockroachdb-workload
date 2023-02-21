@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import javax.sql.DataSource;
 
@@ -183,12 +184,12 @@ public class JdbcOrderRepository implements OrderRepository {
     }
 
     @Override
-    public List<Order> findOrders(UUID fromId, int limit) {
+    public List<Order> findOrders(UUID fromId, int pageSize) {
         String tableName = findTableName();
 
         MapSqlParameterSource parameters = new MapSqlParameterSource();
         parameters.addValue("fromId", fromId);
-        parameters.addValue("limit", limit);
+        parameters.addValue("limit", pageSize);
 
         return namedParameterJdbcTemplate
                 .query("SELECT * FROM " + tableName
@@ -198,6 +199,24 @@ public class JdbcOrderRepository implements OrderRepository {
                                 + " LIMIT :limit",
                         parameters,
                         orderMapper());
+    }
+
+    @Override
+    public List<UUID> findOrderIDs(UUID fromId, int pageSize) {
+        String tableName = findTableName();
+
+        MapSqlParameterSource parameters = new MapSqlParameterSource();
+        parameters.addValue("fromId", fromId);
+        parameters.addValue("limit", pageSize);
+
+        return namedParameterJdbcTemplate
+                .queryForList("SELECT id FROM " + tableName
+                                + " AS OF SYSTEM TIME follower_read_timestamp()"
+                                + " WHERE id > :fromId"
+                                + " ORDER BY id "
+                                + " LIMIT :limit",
+                        parameters,
+                        UUID.class);
     }
 
     private RowMapper<Order> orderMapper() {

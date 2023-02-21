@@ -1,3 +1,5 @@
+[![Java CI with Maven](https://github.com/cockroachlabs-field/cockroachdb-workload/actions/workflows/maven.yml/badge.svg)](https://github.com/cockroachlabs-field/cockroachdb-workload/actions/workflows/maven.yml)
+
 # CockroachDB Workload
 
 Simple tool with an interactive shell for running different workloads 
@@ -5,9 +7,9 @@ using the Java stack against CockroachDB.
 
 Available workloads:
 
-- **ledger** - financial ledger using double-entry principle
-- **outbox** - inserts events simulating a transactional outbox
-- **orders** - inserts and reads purchase orders
+- **ledger** - Financial ledger using double-entry principle
+- **order** - Inserts and reads purchase orders
+- **outbox** - Inserts events simulating a transactional outbox/inbox
 
 Each workload has an `init` command to setup the workload fixture and
 one or more `run` commands to execute the actual workload.
@@ -34,35 +36,43 @@ Java 17+ runtime.
 
 Install the JDK (Ubuntu example):
 
-    sudo apt-get install openjdk-17-jdk
+```shell
+sudo apt-get install openjdk-17-jdk
+```
 
 Confirm the installation by running:
 
-    java --version
+```shell
+java --version
+```
 
 ### Clone the project
 
-    git clone git@github.com:cockroachlabs-field/cockroachdb-workload.git
-    cd cockroachdb-workload
+```shell
+git clone git@github.com:cockroachlabs-field/cockroachdb-workload.git
+cd cockroachdb-workload
+```
 
 ### Build the executable jar
 
-    chmod +x mvnw
-    ./mvnw clean install
+```shell
+chmod +x mvnw
+./mvnw clean install
+```
 
 ## Usage
 
 Create the target database:
 
-    cockroach sql --url postgresql://localhost:26257?sslmode=disable -e "CREATE database workload"
+```shell
+cockroach sql --url postgresql://localhost:26257?sslmode=disable -e "CREATE database workload"
+```
 
 Start the shell with:
 
-    java -jar target/workload.jar --help
-
-or just:
-
-    target/workload.jar --help
+```shell
+java -jar target/workload.jar --help
+```
 
 Type `help` for additional CLI guidance.
 

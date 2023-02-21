@@ -1,11 +1,12 @@
 package io.cockroachdb.workload.order;
 
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,14 +46,6 @@ public class OrderWorkload extends AbstractCommand implements Workload {
         return "order:$ ";
     }
 
-    @Override
-    protected List<Resource> sqlFiles() {
-        return Arrays.asList(
-                new ClassPathResource("db/order/create-order.sql"),
-                new ClassPathResource("db/order/drop-order.sql")
-        );
-    }
-
     @ShellMethod(value = "Initialize order workload")
     public void init(
             @ShellOption(help = "drop tables before creating", defaultValue = "false") boolean drop) {
@@ -63,6 +56,11 @@ public class OrderWorkload extends AbstractCommand implements Workload {
         onPostInit();
     }
 
+    @ShellMethod(value = "Truncate orders")
+    public void reset() {
+        DatabasePopulator.executeScripts(getDataSource(), "db/order/reset-order.sql");
+    }
+
     @ShellMethod(value = "Run order readers and writers")
     public void run(
             @ShellOption(help = "number of read threads", defaultValue = "-1") int readThreads,
@@ -71,21 +69,53 @@ public class OrderWorkload extends AbstractCommand implements Workload {
             @ShellOption(help = "execution duration", defaultValue = "45m") String duration,
             @ShellOption(help = "data access method (jdbc|jpa)", defaultValue = "jdbc") String method,
             @ShellOption(help = "include JSON payload (customer profile)", defaultValue = "false") boolean includeJson,
-            @ShellOption(help = "follower reads", defaultValue = "false") boolean followerReads
+            @ShellOption(help = "follower reads", defaultValue = "false") boolean followerReads,
+            @ShellOption(help = "number of order IDs to read", defaultValue = "10000") int limit
     ) {
-        if (writeThreads <= 0) {
-            writeThreads = Runtime.getRuntime().availableProcessors();
-        }
-        if (writeThreads > 0) {
-            runWriters(writeThreads, batchSize, DurationFormat.parseDuration(duration), method, includeJson);
-        }
+        CountDownLatch readerLatch = new CountDownLatch(limit);
+        runReaders(readThreads, duration, method, followerReads, limit, readerLatch);
+        runWriters(writeThreads, duration, method, batchSize, includeJson, readerLatch);
+    }
 
-        if (readThreads <= 0) {
-            readThreads = Runtime.getRuntime().availableProcessors();
+    @ShellMethod(value = "Run order readers")
+    public void runReaders(
+            @ShellOption(help = "number of threads", defaultValue = "-1") int threads,
+            @ShellOption(help = "execution duration", defaultValue = "45m") String duration,
+            @ShellOption(help = "data access method (jdbc|jpa)", defaultValue = "jdbc") String method,
+            @ShellOption(help = "follower reads", defaultValue = "false") boolean followerReads,
+            @ShellOption(help = "number of order IDs to read", defaultValue = "10000") int limit,
+            @ShellOption(defaultValue = ShellOption.NULL) CountDownLatch readerLatch
+    ) {
+        if (threads <= 0) {
+            threads = Runtime.getRuntime().availableProcessors() * 2;
         }
-        if (readThreads > 0) {
-            runReaders(readThreads, 1000, DurationFormat.parseDuration(duration), method, followerReads);
+        if (readerLatch != null) {
+            try {
+                do {
+                    getConsole().infof("Waiting for reader countdown latch to reach zero (%d)",
+                            readerLatch.getCount());
+                } while (readerLatch.await(3, TimeUnit.SECONDS));
+
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
+        runReaders(threads, limit, DurationFormat.parseDuration(duration), method, followerReads);
+    }
+
+    @ShellMethod(value = "Run order writers")
+    public void runWriters(
+            @ShellOption(help = "number of threads", defaultValue = "-1") int threads,
+            @ShellOption(help = "execution duration", defaultValue = "45m") String duration,
+            @ShellOption(help = "data access method (jdbc|jpa)", defaultValue = "jdbc") String method,
+            @ShellOption(help = "batch size", defaultValue = "16") String batchSize,
+            @ShellOption(help = "include JSON payload", defaultValue = "false") boolean includeJson,
+            @ShellOption(defaultValue = ShellOption.NULL) CountDownLatch readerLatch
+    ) {
+        if (threads <= 0) {
+            threads = Runtime.getRuntime().availableProcessors() * 2;
+        }
+        runWriters(threads, batchSize, DurationFormat.parseDuration(duration), method, includeJson, readerLatch);
     }
 
     private void runWriters(
@@ -93,7 +123,8 @@ public class OrderWorkload extends AbstractCommand implements Workload {
             String batchSize,
             Duration duration,
             String method,
-            boolean includeJson
+            boolean includeJson,
+            CountDownLatch readerLatch
     ) {
         final int batchSizeNum = Multiplier.parseInt(batchSize);
         final OrderRepository orderRepository = getOrderRepositoryUsing(method);
@@ -105,12 +136,14 @@ public class OrderWorkload extends AbstractCommand implements Workload {
         getConsole().infof("Runtime duration: %s", duration);
         getConsole().infof("Data access method: %s", method);
 
-        // Consumers
         IntStream.rangeClosed(1, writeThreads).forEach(value -> {
             getExecutorTemplate().submit("order writer #" + value + " (batch size " + batchSize + ")",
                     () -> {
                         List<Order> orderBatch = OrderEntities.generateOrderEntities(batchSizeNum);
                         orderRepository.insertOrders(orderBatch, includeJson);
+                        if (readerLatch != null) {
+                            orderBatch.forEach(order -> readerLatch.countDown());
+                        }
                     }, duration);
         });
     }
@@ -124,29 +157,26 @@ public class OrderWorkload extends AbstractCommand implements Workload {
     ) {
         final OrderRepository orderRepository = getOrderRepositoryUsing(method);
 
-        List<UUID> ids = new ArrayList<>();
-
         OrderRepository repository = getOrderRepositoryUsing(method);
         Optional<UUID> nextId = repository.findLowestId();
         if (nextId.isEmpty()) {
-            getConsole().warn("No orders");
+            getConsole().warn("No orders found!");
             return;
         }
 
-        List<Order> orders
-                = orderRepository.findOrders(nextId.get(), limit);
-        if (orders.isEmpty()) {
-            getConsole().warn("No orders");
+        List<UUID> ids
+                = orderRepository.findOrderIDs(nextId.get(), limit);
+        if (ids.isEmpty()) {
+            getConsole().warn("No orders found!");
             return;
         }
-
-        orders.forEach(order -> ids.add(order.getId()));
 
         getConsole().successf(">> Starting order readers\n");
         getConsole().infof("Number of read threads: %d", readThreads);
         getConsole().infof("Runtime duration: %s", duration);
         getConsole().infof("Data access method: %s", method);
         getConsole().infof("Follower reads: %s", followerReads);
+        getConsole().infof("# order IDs: %,d", ids.size());
 
         IntStream.rangeClosed(1, readThreads).forEach(value -> {
             getConsole().successf("Starting read thread #%d across %,d key tuples", value, ids.size());
@@ -157,10 +187,11 @@ public class OrderWorkload extends AbstractCommand implements Workload {
         });
     }
 
-    @ShellMethod(value = "List orders using pagination")
+    @ShellMethod(value = "List orders using keyset pagination")
     public void list(@ShellOption(help = "data access method (jdbc|jpa)", defaultValue = "jdbc") String method,
                      @ShellOption(help = "page size", defaultValue = "64") int limit,
-                     @ShellOption(help = "max pages", defaultValue = "-1") int pageLimit
+                     @ShellOption(help = "max pages", defaultValue = "-1") int pageLimit,
+                     @ShellOption(help = "print orders", defaultValue = "false") boolean printOrders
     ) {
         OrderRepository repository = getOrderRepositoryUsing(method);
         Optional<UUID> nextId = repository.findLowestId();
@@ -169,16 +200,17 @@ public class OrderWorkload extends AbstractCommand implements Workload {
             return;
         }
 
-        getConsole().successf(">> Listing orders using seek method (page size: %d)", pageLimit);
+        getConsole().successf(">> Listing orders using page limit: %d", pageLimit);
 
         pageLimit = pageLimit < 0 ? Integer.MAX_VALUE : pageLimit;
 
         int page = 1;
+
         int total = 0;
-        List<Order> orders;
         UUID next = nextId.get();
+
         while (page < pageLimit) {
-            orders = repository.findOrders(next, limit);
+            List<Order> orders = repository.findOrders(next, limit);
             getConsole().infof("Page %,d with %,d items at key %s with limit %d", page, orders.size(), next, limit);
             if (orders.isEmpty()) {
                 break;
@@ -186,10 +218,10 @@ public class OrderWorkload extends AbstractCommand implements Workload {
             next = lastItemOf(orders).getId();
             page++;
             total += orders.size();
-
-            orders.forEach(o -> getConsole().successf("%s", o));
+            if (printOrders) {
+                orders.forEach(o -> getConsole().successf("%s", o));
+            }
         }
-        ;
 
         getConsole().infof("%,d orders in %,d pages", total, page);
     }
