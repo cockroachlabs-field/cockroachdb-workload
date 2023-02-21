@@ -1,0 +1,70 @@
+########################
+# Spring boot properties
+# http://docs.spring.io/spring-boot/docs/current/reference/html/common-application-properties.html
+########################
+spring:
+#  main:
+#    allow-circular-references: true
+  application:
+    name: workload-undefined
+  profiles:
+    active: undefined
+  shell:
+    command:
+      stacktrace:
+        enabled: true
+      version:
+        enabled: false
+      script:
+        enabled: false
+  output:
+    ansi:
+      enabled: ALWAYS
+  # Datasource
+  datasource:
+#    url: jdbc:postgresql://localhost:26257/workload?sslmode=disable
+    url: jdbc:postgresql://192.168.1.99:26257/workload?sslmode=disable
+    driver-class-name: org.postgresql.Driver
+    username: root
+    password:
+    hikari:
+      auto-commit: true
+      maximum-pool-size: 64
+      minimum-idle: 0
+      initialization-fail-timeout: -1
+      connection-timeout: 5000
+      catalog: public
+      pool-name: cockroachdb-workload
+  jpa:
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: io.cockroachdb.workload.common.jpa.CockroachDBDialect
+        connection:
+          provider_disables_autocommit: false
+        jdbc:
+          lob:
+            non_contextual_creation: true
+          batch_size: 128
+          fetch_size: 128
+          batch_versioned_data: true
+        order_inserts: true
+        order_updates: true
+        hql:
+          bulk_id_strategy: org.hibernate.hql.spi.id.inline.CteValuesListBulkIdStrategy
+        cache:
+          use_minimal_puts: true
+          use_second_level_cache: false
+logging:
+  file:
+    name: "workload.log"
+  pattern:
+    console: "%clr(%d{${LOG_DATEFORMAT_PATTERN:yyyy-MM-dd HH:mm:ss.SSS}}){faint} %clr(${LOG_LEVEL_PATTERN:%5p}) %clr([%logger{39}]){cyan} %m%n${LOG_EXCEPTION_CONVERSION_WORD:%wEx}"
+    file: "%d{${LOG_DATEFORMAT_PATTERN:yyyy-MM-dd HH:mm:ss.SSS}} ${LOG_LEVEL_PATTERN:%5p} [%t] %logger{39} : %m%n${LOG_EXCEPTION_CONVERSION_WORD:%wEx}"
+
+cockroachdb:
+  workload:
+    # Total core thread pool size, e.g. the number of threads to keep in the pool even if they are idle. The thread
+    # pool will prefer to start new threads up to this size rather than queue workers.
+    # Default is detected number of vCPUs
+    core-pool-size: -1

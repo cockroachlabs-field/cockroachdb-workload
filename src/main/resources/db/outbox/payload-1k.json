@@ -1,0 +1,45 @@
+[
+  {
+    "_id": "6324030280a3861f382ed688",
+    "index": 0,
+    "guid": "4de31a0f-c405-47ac-ab64-975017f0fd2f",
+    "isActive": false,
+    "balance": "$2,366.11",
+    "picture": "http://placehold.it/32x32",
+    "age": 38,
+    "eyeColor": "blue",
+    "name": "Fleming Davidson",
+    "gender": "male",
+    "company": "COMVEY",
+    "email": "flemingdavidson@comvey.com",
+    "phone": "+1 (806) 482-3173",
+    "address": "842 Conselyea Street, Spelter, Alaska, 5683",
+    "about": "Et id dolor laboris sit. Voluptate dolor deserunt fugiat enim tempor in minim id laboris occaecat amet nostrud consectetur aute. Deserunt et qui cillum aliquip Lorem consequat ad do commodo ea nisi labore ea. Culpa id eu reprehenderit ut mollit anim do ullamco ipsum mollit ullamco.\r\n",
+    "registered": "2021-04-13T02:21:28 -02:00",
+    "latitude": -41.315923,
+    "longitude": 109.433328,
+    "tags": [
+      "dolor",
+      "esse",
+      "exercitation",
+      "laborum",
+      "ea"
+    ],
+    "friends": [
+      {
+        "id": 0,
+        "name": "Simone Fox"
+      },
+      {
+        "id": 1,
+        "name": "Tamika Mcgowan"
+      },
+      {
+        "id": 2,
+        "name": "Herman Aguilar"
+      }
+    ],
+    "greeting": "Hello, Fleming Davidson! You have 6 unread messages.",
+    "favoriteFruit": "apple"
+  }
+]

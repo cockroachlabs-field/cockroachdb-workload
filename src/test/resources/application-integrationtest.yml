@@ -1,0 +1,7 @@
+########################
+# Spring boot properties
+# http://docs.spring.io/spring-boot/docs/current/reference/html/common-application-properties.html
+########################
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:26257/workload?sslmode=disable
