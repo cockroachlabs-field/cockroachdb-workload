@@ -1,13 +1,10 @@
 package io.cockroachdb.workload.ledger;
 
-import java.util.Arrays;
 import java.util.Currency;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.Resource;
 import org.springframework.shell.standard.ShellCommandGroup;
 import org.springframework.shell.standard.ShellComponent;
 import org.springframework.shell.standard.ShellMethod;
@@ -39,8 +36,7 @@ public class LedgerWorkload extends AbstractLedgerWorkload implements Workload {
             @ShellOption(help = "initial balance", defaultValue = "100000.00") String initialBalance,
             @ShellOption(help = "account currency", defaultValue = "USD") String currency,
             @ShellOption(help = "number of accounts per region", defaultValue = "10k") String accounts,
-            @ShellOption(help = "transaction size", defaultValue = "512") int transactionSize,
-            @ShellOption(help = "batch size", defaultValue = "64") int batchSize,
+            @ShellOption(help = "batch size", defaultValue = "128") int batchSize,
             @ShellOption(help = "regions to use (all|gateway|<any>)", defaultValue = "all") String regions,
             @ShellOption(help = "use JPA over JDBC (default)", defaultValue = "false") boolean jpa,
             @ShellOption(help = "drop schema", defaultValue = "false") boolean drop,
@@ -68,12 +64,16 @@ public class LedgerWorkload extends AbstractLedgerWorkload implements Workload {
         AtomicInteger total = new AtomicInteger();
 
         resolvedRegions.forEach(region -> {
-            getConsole().successf("Creating %,d accounts in region %s", accountsPerRegion, region);
+            Money balance = Money.of(initialBalance, Currency.getInstance(currency));
+
+            getConsole().successf("Creating %,d accounts in region %s with balance %s..", accountsPerRegion, region,
+                    balance);
+
             int num = accountService.createAccounts(region,
-                    Money.of(initialBalance, Currency.getInstance(currency)),
+                    balance,
                     accountsPerRegion,
-                    transactionSize,
                     batchSize);
+
             total.addAndGet(num);
         });
 
@@ -81,7 +81,7 @@ public class LedgerWorkload extends AbstractLedgerWorkload implements Workload {
         onPostInit();
     }
 
-    @ShellMethod(value = "Report ledger balance sheet")
+    @ShellMethod(value = "Report ledger total balance sheet")
     public void report(@ShellOption(help = "use JPA over JDBC (default)", defaultValue = "false") boolean jpa) {
         AtomicInteger totalAccounts = new AtomicInteger();
 
@@ -98,7 +98,7 @@ public class LedgerWorkload extends AbstractLedgerWorkload implements Workload {
             totalAccounts.addAndGet(accountSummary.getNumberOfAccounts());
         });
 
-        AccountService accountService = getAccountService(jpa?"jpa":"jdbc");
+        AccountService accountService = getAccountService(jpa ? "jpa" : "jdbc");
 
         getConsole().successf("Total number of accounts: %,d", totalAccounts.get());
         accountService.getCurrencies().forEach(currency -> {
@@ -106,7 +106,7 @@ public class LedgerWorkload extends AbstractLedgerWorkload implements Workload {
         });
     }
 
-    @ShellMethod(value = "List region names")
+    @ShellMethod(value = "List available region names")
     public void regions() {
         jdbcMetadataRepositoryImpl.getRegions().forEach(region -> {
             getConsole().infof("%s", region);

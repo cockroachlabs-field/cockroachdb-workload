@@ -17,12 +17,14 @@
 
     <logger name="io.cockroachdb.SQL_TRACE" level="DEBUG" additivity="false">
         <appender-ref ref="FILE_ASYNC" />
+        <appender-ref ref="CONSOLE" />
     </logger>
 
     <logger name="org.springframework" level="WARN"/>
     <logger name="com.zaxxer" level="WARN"/>
 
     <root level="INFO">
+        <appender-ref ref="FILE_ASYNC" />
         <appender-ref ref="CONSOLE" />
     </root>
 </configuration>

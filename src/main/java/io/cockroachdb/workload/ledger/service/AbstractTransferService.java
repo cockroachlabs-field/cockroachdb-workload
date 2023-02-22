@@ -32,7 +32,7 @@ public abstract class AbstractTransferService implements TransferService {
                 "No transaction context - check Spring profile settings");
 
         if (request.getAccountLegs().size() < 2) {
-            throw new BadRequestException("Must have at least two account items");
+            throw new BadRequestException("Must have at least two account legs");
         }
 
         // Coalesce multi-legged transactions

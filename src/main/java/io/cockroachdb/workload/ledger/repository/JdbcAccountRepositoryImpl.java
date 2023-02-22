@@ -6,6 +6,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.Arrays;
+import java.util.Currency;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -16,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.IncorrectResultSizeDataAccessException;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -40,41 +42,33 @@ public class JdbcAccountRepositoryImpl implements AccountRepository {
 
     @Override
     @NotTransactional // Use implicit
-    public void createAccounts(int numAccounts, int batchSize, Supplier<Account> accountSupplier) {
+    public void createAccounts(int numAccounts, Supplier<Account> accountSupplier) {
         Assert.isTrue(!TransactionSynchronizationManager.isActualTransactionActive(), "TX active");
 
-        for (int i = 0; i < numAccounts; i += batchSize) {
-            if (i + batchSize > numAccounts) {
-                batchSize = numAccounts - i;
-            }
+        jdbcTemplate.batchUpdate(
+                "INSERT INTO account "
+                        + "(region, balance, currency, name, description, account_type, closed, allow_negative) "
+                        + "VALUES(?,?,?,?,?,?,?,?)",
+                new BatchPreparedStatementSetter() {
+                    @Override
+                    public void setValues(PreparedStatement ps, int i) throws SQLException {
+                        Account account = accountSupplier.get();
 
-            final int currentBatch = batchSize;
+                        ps.setString(1, account.getRegion());
+                        ps.setBigDecimal(2, account.getBalance().getAmount());
+                        ps.setString(3, account.getBalance().getCurrency().getCurrencyCode());
+                        ps.setString(4, account.getName());
+                        ps.setString(5, account.getDescription());
+                        ps.setString(6, account.getAccountType().getCode());
+                        ps.setBoolean(7, account.isClosed());
+                        ps.setInt(8, account.getAllowNegative());
+                    }
 
-            jdbcTemplate.batchUpdate(
-                    "INSERT INTO account "
-                            + "(region, balance, currency, name, description, account_type, closed, allow_negative) "
-                            + "VALUES(?,?,?,?,?,?,?,?)",
-                    new BatchPreparedStatementSetter() {
-                        @Override
-                        public void setValues(PreparedStatement ps, int i) throws SQLException {
-                            Account account = accountSupplier.get();
-
-                            ps.setString(1, account.getRegion());
-                            ps.setBigDecimal(2, account.getBalance().getAmount());
-                            ps.setString(3, account.getBalance().getCurrency().getCurrencyCode());
-                            ps.setString(4, account.getName());
-                            ps.setString(5, account.getDescription());
-                            ps.setString(6, account.getAccountType().getCode());
-                            ps.setBoolean(7, account.isClosed());
-                            ps.setInt(8, account.getAllowNegative());
-                        }
-
-                        @Override
-                        public int getBatchSize() {
-                            return currentBatch;
-                        }
-                    });
-        }
+                    @Override
+                    public int getBatchSize() {
+                        return numAccounts;
+                    }
+                });
     }
 
     @Override
@@ -100,23 +94,27 @@ public class JdbcAccountRepositoryImpl implements AccountRepository {
     }
 
     @Override
-    public List<String> getCurrencies() {
-        return this.jdbcTemplate.queryForList(
-                "SELECT distinct currency "
-                        + "FROM account a "
-                        + "WHERE 1=1",
-                String.class
+    public List<Currency> getCurrencies() {
+        return this.jdbcTemplate.query(
+                "SELECT distinct a.currency "
+                        + "FROM account a",
+                new RowMapper<Currency>() {
+                    @Override
+                    public Currency mapRow(ResultSet rs, int rowNum) throws SQLException {
+                        return Currency.getInstance(rs.getString(1));
+                    }
+                }
         );
     }
 
     @Override
-    public Money getTotalBalance(String currency) {
+    public Money getTotalBalance(Currency currency) {
         BigDecimal balance = this.jdbcTemplate.queryForObject(
                 "SELECT sum(balance) "
                         + "FROM account a "
                         + "WHERE currency=?",
                 (rs, rowNum) -> rs.getBigDecimal(1),
-                currency
+                currency.getCurrencyCode()
         );
         return Money.of(balance, currency);
     }

@@ -1,6 +1,7 @@
 package io.cockroachdb.workload.ledger.repository;
 
 import java.math.BigDecimal;
+import java.util.Currency;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -16,6 +17,7 @@ import org.springframework.util.Assert;
 
 import io.cockroachdb.workload.Profiles;
 import io.cockroachdb.workload.common.aspect.NotTransactional;
+import io.cockroachdb.workload.common.aspect.TransactionBoundary;
 import io.cockroachdb.workload.common.util.Money;
 import io.cockroachdb.workload.ledger.model.Account;
 import io.cockroachdb.workload.ledger.model.AccountSummary;
@@ -44,12 +46,12 @@ public class JpaAccountRepositoryImpl implements AccountRepository {
     }
 
     @Override
-    @NotTransactional
-    public void createAccounts(int numAccounts, int batchSize, Supplier<Account> accountSupplier) {
-        Assert.isTrue(!TransactionSynchronizationManager.isActualTransactionActive(), "TX active");
+    @TransactionBoundary
+    public void createAccounts(int numAccounts, Supplier<Account> accountSupplier) {
+        Assert.isTrue(TransactionSynchronizationManager.isActualTransactionActive(), "TX not active");
 
         Session session = entityManager.unwrap(Session.class);
-        session.setJdbcBatchSize(batchSize);
+        session.setJdbcBatchSize(numAccounts);
 
         IntStream.range(0, numAccounts).forEach(
                 i -> accountRepository.save(accountSupplier.get()));
@@ -78,16 +80,16 @@ public class JpaAccountRepositoryImpl implements AccountRepository {
     }
 
     @Override
-    public List<String> getCurrencies() {
+    public List<Currency> getCurrencies() {
         return entityManager.createQuery(
-                        "SELECT distinct a.balance.currency FROM Account a", String.class)
+                        "SELECT distinct a.balance.currency FROM Account a", Currency.class)
                 .getResultList();
     }
 
     @Override
-    public Money getTotalBalance(String currency) {
+    public Money getTotalBalance(Currency currency) {
         BigDecimal balance = entityManager.createQuery(
-                "SELECT a.balance FROM Account a where a.balance.currency=?", BigDecimal.class)
+                        "SELECT sum(a.balance.amount) FROM Account a where a.balance.currency=?1", BigDecimal.class)
                 .setParameter(1, currency)
                 .getSingleResult();
         return Money.of(balance, currency);

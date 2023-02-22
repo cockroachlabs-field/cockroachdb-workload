@@ -1,6 +1,8 @@
 package io.cockroachdb.workload.ledger.service;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.Currency;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -26,27 +28,29 @@ public abstract class AbstractAccountService implements AccountService {
     public int createAccounts(String region,
                               Money initialBalance,
                               int numAccounts,
-                              int transactionSize,
                               int batchSize) {
         Assert.isTrue(!TransactionSynchronizationManager.isActualTransactionActive(), "Transaction active");
 
         AtomicInteger counter = new AtomicInteger();
 
         Supplier<Account> accountSupplier = () -> Account.builder()
+                .withId(UUID.randomUUID())
                 .withRegion(region)
                 .withName("user:" + counter.incrementAndGet())
                 .withDescription(RandomData.randomLoreIpsum(5, 10, false))
                 .withBalance(initialBalance)
                 .withAccountType(AccountType.ASSET)
+                .withInsertedAt(LocalDateTime.now())
+                .withUpdatedAt(LocalDateTime.now())
                 .withAllowNegative(false)
                 .withClosed(false)
                 .build();
 
-        for (int i = 0; i < numAccounts; i += transactionSize) {
-            if (i + transactionSize > numAccounts) {
-                transactionSize = numAccounts - i;
+        for (int i = 0; i < numAccounts; i += batchSize) {
+            if (i + batchSize > numAccounts) {
+                batchSize = numAccounts - i;
             }
-            getAccountRepository().createAccounts(transactionSize, batchSize, accountSupplier);
+            getAccountRepository().createAccounts(batchSize, accountSupplier);
         }
 
         return counter.get();
@@ -72,13 +76,13 @@ public abstract class AbstractAccountService implements AccountService {
     }
 
     @Override
-    public List<String> getCurrencies() {
+    public List<Currency> getCurrencies() {
         return getAccountRepository().getCurrencies();
     }
 
     @Override
     @TransactionBoundary(followerRead = true)
-    public Money getTotalBalance(String currency) {
+    public Money getTotalBalance(Currency currency) {
         Assert.isTrue(TransactionSynchronizationManager.isActualTransactionActive(), "Transaction not active");
         return getAccountRepository().getTotalBalance(currency);
     }

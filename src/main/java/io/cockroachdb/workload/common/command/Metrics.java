@@ -30,9 +30,8 @@ import org.springframework.util.ReflectionUtils;
 import com.zaxxer.hikari.HikariDataSource;
 
 import io.cockroachdb.workload.common.CallMetrics;
+import io.cockroachdb.workload.common.config.DataSourceConfig;
 import jakarta.annotation.PostConstruct;
-
-import static io.cockroachdb.workload.common.config.DataSourceConfig.SQL_TRACE_LOGGER;
 
 @ShellComponent
 @ShellCommandGroup("Metrics Commands")
@@ -69,6 +68,11 @@ public class Metrics extends AbstractCommand {
         };
     }
 
+    @ShellMethod(value = "Clear call metrics", key = {"clear-metrics", "cm"})
+    public void clearMetrics() {
+        callMetrics.clear();
+    }
+    
     @ShellMethod(value = "Toggle metrics output to console", key = {"metrics", "m"})
     public void toggleMetrics(@ShellOption(help = "print interval in seconds", defaultValue = "5") int interval) {
         if (metricsFuture == null) {
@@ -86,7 +90,7 @@ public class Metrics extends AbstractCommand {
     public void toggleTrace() {
         ch.qos.logback.classic.LoggerContext loggerContext = (ch.qos.logback.classic.LoggerContext) LoggerFactory
                 .getILoggerFactory();
-        ch.qos.logback.classic.Logger logger = loggerContext.getLogger(SQL_TRACE_LOGGER);
+        ch.qos.logback.classic.Logger logger = loggerContext.getLogger(DataSourceConfig.SQL_TRACE_LOGGER);
         if (logger.getLevel().isGreaterOrEqual(ch.qos.logback.classic.Level.DEBUG)) {
             logger.setLevel(ch.qos.logback.classic.Level.TRACE);
             getConsole().info("SQL trace logging ENABLED");

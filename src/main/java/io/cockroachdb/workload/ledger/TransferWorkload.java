@@ -35,9 +35,12 @@ public class TransferWorkload extends AbstractLedgerWorkload {
             @ShellOption(help = "use JPA over JDBC (default)", defaultValue = "false") boolean jpa,
             @ShellOption(help = "account regions to use (all|gateway|<any>)", defaultValue = "all") String regions,
             @ShellOption(help = "max number of accounts per region", defaultValue = "5000") int limit,
-            @ShellOption(help = "number of account legs per region (multiple of 2)", defaultValue = "2") int legs,
+            @ShellOption(help = "number of account legs per transaction (multiple of 2)", defaultValue = "2") int legs,
             @ShellOption(help = "execution duration", defaultValue = "45m") String duration
     ) {
+        if (legs < 2) {
+            throw new BadRequestException("Must have at least two account legs");
+        }
         if (legs % 2 != 0) {
             throw new BadRequestException("Accounts per region must be a multiple of 2: " + legs);
         }

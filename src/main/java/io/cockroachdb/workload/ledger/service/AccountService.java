@@ -1,6 +1,6 @@
 package io.cockroachdb.workload.ledger.service;
 
-import java.math.BigDecimal;
+import java.util.Currency;
 import java.util.List;
 import java.util.UUID;
 
@@ -12,7 +12,6 @@ public interface AccountService {
     int createAccounts(String region,
                        Money initialBalance,
                        int numAccounts,
-                       int transactionSize,
                        int batchSize);
 
     List<Account> findAccountsByRegion(String region, int offset, int limit);
@@ -21,9 +20,9 @@ public interface AccountService {
 
     Money getBalanceSnapshot(UUID id);
 
-    List<String> getCurrencies();
+    List<Currency> getCurrencies();
 
-    Money getTotalBalance(String currency);
+    Money getTotalBalance(Currency currency);
 
     AccountSummary accountSummary(String region);
 }
